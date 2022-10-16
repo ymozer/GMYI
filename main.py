@@ -34,73 +34,84 @@ def os_info():
         'Version': uname.version,
         'Machine': uname.machine,
         'Processor': uname.processor,
-        "Boot Time": datetime(bt.year, bt.month, bt.day, bt.hour, bt.minute, bt.second)
-    }, index=[0])
+        'Boot Time': datetime(bt.year, bt.month, bt.day, bt.hour, bt.minute, bt.second)
+    }, index=[0])  # , columns=['System','Node Name','Release','Version','Machine','Processor','Boot Time']
     return df
 
 
 def cpu_info():
     cpufreq = psutil.cpu_freq()
-    max_freq=f"{cpufreq.max:.2f}Mhz"
-    min_freq=f"{cpufreq.min:.2f}Mhz"
-    current_freq=f"{cpufreq.current:.2f}Mhz"
+    max_freq = f"{cpufreq.max:.2f}Mhz"
+    min_freq = f"{cpufreq.min:.2f}Mhz"
+    current_freq = f"{cpufreq.current:.2f}Mhz"
     total_usage = f"{psutil.cpu_percent()}%"
-    dizi=[]
+    dizi = []
     for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
         a = (f"Core {i}: {percentage}%")
         dizi.append(a)
-    
+
     df = pd.DataFrame({
         "Physical cores": psutil.cpu_count(logical=False),
         "Total cores": psutil.cpu_count(logical=True),
         "Max Frequency": max_freq,
         "Min Frequency": min_freq,
         "Current Frequency": current_freq,
-        "CPU Usage Per Core":{dizi},
+        "CPU Usage Per Core": dizi,
         "Total CPU Usage": total_usage
-    }, index=[0])
-    print(df)
+    }, index=dizi)
+    return df
+
 
 def mem_info():
-    print("="*40, "Memory Information", "="*40)
+
     svmem = psutil.virtual_memory()
-    print(f"Total: {get_size(svmem.total)}")
-    print(f"Available: {get_size(svmem.available)}")
-    print(f"Used: {get_size(svmem.used)}")
-    print(f"Percentage: {svmem.percent}%")
-    print("="*20, "SWAP", "="*20)
-    # get the swap memory details (if exists)
     swap = psutil.swap_memory()
-    print(f"Total: {get_size(swap.total)}")
-    print(f"Free: {get_size(swap.free)}")
-    print(f"Used: {get_size(swap.used)}")
-    print(f"Percentage: {swap.percent}%")
+    df = pd.DataFrame({
+        "Total": get_size(svmem.total),
+        "Available": get_size(svmem.available),
+        "Used": get_size(svmem.used),
+        "Percentage": svmem.percent,
+        "Total Swap": get_size(swap.total),
+        "Free Swap": get_size(swap.free),
+        "Used Swap": get_size(swap.used),
+        "Percentage Swap": swap.percent,
+    }, index=[0])
+    return df
 
 
 def disk_info():
-    # Disk Information
-    print("="*40, "Disk Information", "="*40)
-    print("Partitions and Usage:")
-    # get all disk partitions
     partitions = psutil.disk_partitions()
-    for partition in partitions:
-        print(f"=== Device: {partition.device} ===")
-        print(f"  Mountpoint: {partition.mountpoint}")
-        print(f"  File system type: {partition.fstype}")
-        try:
-            partition_usage = psutil.disk_usage(partition.mountpoint)
-        except PermissionError:
-            # this can be catched due to the disk that
-            # isn't ready
-            continue
-        print(f"  Total Size: {get_size(partition_usage.total)}")
-        print(f"  Used: {get_size(partition_usage.used)}")
-        print(f"  Free: {get_size(partition_usage.free)}")
-        print(f"  Percentage: {partition_usage.percent}%")
-    # get IO statistics since boot
     disk_io = psutil.disk_io_counters()
-    print(f"Total read: {get_size(disk_io.read_bytes)}")
-    print(f"Total write: {get_size(disk_io.write_bytes)}")
+    df = pd.DataFrame(columns=["Device", "Mountpoint", "File system type",
+                      "Total Size", "Used", "Free", "Percentage", "Total read", "Total write"], index=[0])
+    count = 0
+    for p in partitions:
+        for i in range(len(df.columns)):
+            try:
+                partition_usage = psutil.disk_usage(p.mountpoint)
+            except PermissionError:
+                continue
+            if i == 0:
+                df.at[count, 'Device'] = p.device
+            if i == 1:
+                df.at[count, 'Mountpoint'] = p.mountpoint
+            if i == 2:
+                df.at[count, 'File system type'] = p.fstype
+            if i == 3:
+                df.at[count, 'Total Size'] = get_size(partition_usage.total)
+            if i == 4:
+                df.at[count, 'Used'] = get_size(partition_usage.used)
+            if i == 5:
+                df.at[count, 'Free'] = get_size(partition_usage.free)
+            if i == 6:
+                strr=get_size(partition_usage.percent)
+                df.at[count, 'Percentage'] = f'{strr[:-1]}%'
+            if i == 7:
+                df.at[count, 'Total read'] = get_size(disk_io.read_bytes)
+            if i == 8:
+                df.at[count, 'Total write'] = get_size(disk_io.write_bytes)
+                count = count+1
+    print(df)
 
 
 def network_info():
@@ -183,16 +194,13 @@ def bios_info():
     print('\n', str(a)[1:-1])
 
 
-
-
-
 if __name__ == '__main__':
-    os_info()
-    cpu_info()
-    #mem_info()
-    #disk_info()
-    #network_info()
-    #gpu_info()
-    #update_status()
-    #bios_info()
-    #installed_programs()
+    # os_info()
+    # cpu_info()
+    # print(mem_info())
+    disk_info()
+    # network_info()
+    # gpu_info()
+    # update_status()
+    # bios_info()
+    # installed_programs()
