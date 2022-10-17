@@ -111,7 +111,7 @@ def disk_info():
             if i == 8:
                 df.at[count, 'Total write'] = get_size(disk_io.write_bytes)
                 count = count+1
-    print(df)
+    return df
 
 
 def network_info():
@@ -195,10 +195,10 @@ def bios_info():
 
 
 if __name__ == '__main__':
-    # os_info()
-    # cpu_info()
-    # print(mem_info())
-    disk_info()
+    print(os_info())
+    print(cpu_info())
+    print(mem_info())
+    print(disk_info())
     # network_info()
     # gpu_info()
     # update_status()
