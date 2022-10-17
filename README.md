@@ -14,6 +14,15 @@ GMYI can collect infected user's system data and analyze it for displaying pop-u
 - [ ] Make a webserver for receiving information from infected systems.
 - [ ] Analyze "user types" according to collected data.
 - [ ] Implement the pop-up window on desktop for displaying personalized advertisement.
+- [ ] Reverse shell to infected Windows computer.
+- [ ] Obfuscation
 - [ ] ...
+
+## How to Spread GMYI ??
+* Rubber Ducky
+* Social Engineering (e-mail)
+* ??
+
+
 ## Flowchart
 ![Flowchart](https://github.com/ymozer/GMYI/blob/main/GMYI_flowchart.png)
