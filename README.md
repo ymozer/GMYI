@@ -25,4 +25,4 @@ GMYI can collect infected user's system data and analyze it for displaying pop-u
 
 
 ## Flowchart
-![Flowchart](https://github.com/ymozer/GMYI/blob/main/GMYI_flowchart.png)
+![Flowchart](/Media/GMYI_flowchart.png)
