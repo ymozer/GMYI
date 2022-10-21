@@ -6,7 +6,6 @@ import platform
 from datetime import datetime
 import subprocess
 import pandas as pd
-import numpy as np
 
 
 def get_size(bytes, suffix="B"):
@@ -195,10 +194,12 @@ def bios_info():
 
 
 if __name__ == '__main__':
-    print(os_info())
-    print(cpu_info())
-    print(mem_info())
-    print(disk_info())
+    with open("test.txt", "w",encoding = 'utf-8') as f:
+        f.write(os_info())
+        f.write(cpu_info())
+        f.write(mem_info())
+        f.write(disk_info())
+    
     # network_info()
     # gpu_info()
     # update_status()
