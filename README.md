@@ -5,10 +5,13 @@ GMYI can collect infected user's system data and analyze it for displaying pop-u
 - [ ] Convert every data collection function to Pandas DataFrame
 - [ ] Get browser data (Edge, Chrome, Chromium, Firefox, Opera)
   - [ ] Cookies
-  - [ ] Passwords
+  - [ ] Passwords ??
   - [ ] History   
 - [ ] Test GMYI on other systems.
-- [ ] Make requirement.txt.
+- [ ] USB devices information function
+- [ ] Screenshot/Recording ability as well as access to microphone and camera.
+- [ ] Keylogger ability
+- [x] Make requirement.txt.
 - [ ] Make an executable.
 - [ ] Make a database that will store infected system's information.
 - [ ] Make a webserver for receiving information from infected systems.
@@ -18,7 +21,8 @@ GMYI can collect infected user's system data and analyze it for displaying pop-u
 - [ ] Obfuscation
 - [ ] ...
 
-## How to Spread GMYI ??
+## How to Spread/Run GMYI ??
+GMYI can sit on some website that can downloaded and executed by rubber ducky script.
 * Rubber Ducky
 * Social Engineering (e-mail)
 * ??
