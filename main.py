@@ -1,11 +1,21 @@
+'''
+We don't need 1 row for all the data. we can create seperate file outputs (json/csv)
+'''
+
 from tabulate import tabulate
 import os
 import GPUtil
 import psutil
+import cpuinfo
 import platform
 from datetime import datetime
 import subprocess
 import pandas as pd
+
+# to get rid of print clipping 
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 200)
+
 
 
 def get_size(bytes, suffix="B"):
@@ -39,25 +49,30 @@ def os_info():
 
 
 def cpu_info():
+    '''
+    Can't get current CPU freq (win 11) Tried wmic and Get-WmiObject but its equals 
+    to max freq. For the good part, we really dont need that data because cpu freq is
+    constantly changing.  *Removed Per Core usage info.
+    '''
+    cpu_model= cpuinfo.get_cpu_info()['brand_raw']
     cpufreq = psutil.cpu_freq()
     max_freq = f"{cpufreq.max:.2f}Mhz"
     min_freq = f"{cpufreq.min:.2f}Mhz"
-    current_freq = f"{cpufreq.current:.2f}Mhz"
-    total_usage = f"{psutil.cpu_percent()}%"
-    dizi = []
-    for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
-        a = (f"Core {i}: {percentage}%")
-        dizi.append(a)
+    total_usage = f"{psutil.cpu_percent(interval=2)}%"
+    
+    #dizi = []
+    # for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
+    #     a = (f"Core {i}: {percentage}%")
+    #     dizi.append(a)
 
     df = pd.DataFrame({
+        "CPU model" : cpu_model,
         "Physical cores": psutil.cpu_count(logical=False),
         "Total cores": psutil.cpu_count(logical=True),
         "Max Frequency": max_freq,
         "Min Frequency": min_freq,
-        "Current Frequency": current_freq,
-        "CPU Usage Per Core": dizi,
         "Total CPU Usage": total_usage
-    }, index=dizi)
+    }, index=[0])
     return df
 
 
@@ -195,12 +210,12 @@ def bios_info():
 
 if __name__ == '__main__':
     with open("test.txt", "w",encoding = 'utf-8') as f:
-        f.write(os_info())
-        f.write(cpu_info())
-        f.write(mem_info())
-        f.write(disk_info())
+        f.writelines(f"{str(os_info())}\n")
+        f.writelines(f"{str(cpu_info())}\n")
+        f.writelines(f"{str(mem_info())}\n")
+        f.writelines(f"{str(disk_info())}\n")
     
-    # network_info()
+    print(network_info())
     # gpu_info()
     # update_status()
     # bios_info()
