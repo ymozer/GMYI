@@ -1,9 +1,0 @@
-    System        Node Name Release     Version Machine                                          Processor           Boot Time
-0  Windows  DESKTOP-0L11T3Q      10  10.0.22000   AMD64  Intel64 Family 6 Model 151 Stepping 5, Genuine... 2022-10-22 00:12:34
-                              CPU model  Physical cores  Total cores Max Frequency Min Frequency Total CPU Usage
-0  12th Gen Intel(R) Core(TM) i3-12100F               4            8    3300.00Mhz       0.00Mhz           20.7%
-     Total Available    Used  Percentage Total Swap Free Swap Used Swap  Percentage Swap
-0  15.86GB    9.06GB  6.80GB        42.9    14.50GB   11.03GB    3.47GB             23.9
-  Device Mountpoint File system type Total Size      Used      Free Percentage Total read Total write
-0    C:\        C:\             NTFS   930.81GB  794.58GB  136.23GB     85.40%    39.56GB     42.78GB
-1    D:\        D:\             NTFS     3.64TB    1.69TB    1.95TB     46.40%    39.56GB     42.78GB
