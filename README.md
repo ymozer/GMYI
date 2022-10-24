@@ -3,6 +3,7 @@
 GMYI can collect infected user's system data and analyze it for displaying pop-up ads on the desktop.
 ## TO-DO's
 - [ ] Convert every data collection function to Pandas DataFrame
+- [ ] Command line flags for running certain functions.
 - [ ] Get browser data (Edge, Chrome, Chromium, Firefox, Opera)
   - [ ] Cookies
   - [ ] Passwords ??
