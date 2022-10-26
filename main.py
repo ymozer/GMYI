@@ -36,6 +36,7 @@ from cpuinfo import get_cpu_info
 import platform
 from datetime import datetime
 import subprocess
+import wmi
 import pandas as pd
 
 # to get rid of print clipping to console and files 
@@ -104,7 +105,9 @@ def cpu_info():
 
 # Memory information converts to DataFrame
 def mem_info():
-
+    '''
+    Powershell: Get-WmiObject -Class Win32_PhysicalMemory
+    '''
     svmem = psutil.virtual_memory()
     swap = psutil.swap_memory()
     df = pd.DataFrame({
@@ -215,6 +218,12 @@ def gpu_info():
                                        "temperature", "uuid")))
     print() # new line 
 
+def usb_devices():
+    import win32com.client
+
+    wmi = win32com.client.GetObject ("winmgmts:")
+    for usb in wmi.InstancesOf ("Win32_USBHub"):
+        print(usb.FriendlyName)
 
 '''
 Can be improved... Some programs doesn't show up with wmic command.
@@ -241,6 +250,9 @@ def update_status():
 
 
 def bios_info():
+    '''
+    powershell: Get-WmiObject -Class Win32_Bios | Format-List -Property *
+    '''
     print('\n', "="*40, "BIOS Info", "="*40)
     a = os.system('wmic bios get version')
     print('\n', str(a)[1:-1])
@@ -261,4 +273,32 @@ if __name__ == '__main__':
     # gpu_info()
     # update_status()
     # bios_info()
-    print(installed_programs())
+    #print(installed_programs())
+    usb_devices()
+
+
+''' NOTES for Powershell
+Get-Date: ...
+Get-Clipboard: ...
+Get-WmiObject -Class Win32_Volume | select Name, DeviceID, SerialNumber
+
+
+Get-CIMinstance or Get-WmiObject 
+Motherboard:  Get-WmiObject -Class Win32_baseboard
+Memory: Get-WmiObject -Class Win32_PhysicalMemory
+
+List all properties of class: Get-WmiObject Win32_bios | Get-Member
+Get specific property value: Get-WmiObject -Class Win32_PhysicalMemory | Select -ExpandProperty "Manufacturer"
+
+Get both the currently connected IPv4 and IPv6 IP addresses for the local machine and place on the clipboard:
+Get-NetIPAddress -InterfaceIndex $(Get-NetConnectionProfile | Select-Object -ExpandProperty InterfaceIndex) | Select-Object -ExpandProperty IPAddress | set-clipboard
+
+Get the currently connected IPv4 IP address for the local machine:
+PS C:\> $ip4 = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $(Get-NetConnectionProfile | Select-Object -ExpandProperty InterfaceIndex) | Select-Object -ExpandProperty IPAddress
+
+
+
+RESEARCH: 
+Amsi And Amsi.fail
+
+'''
