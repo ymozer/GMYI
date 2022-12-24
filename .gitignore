@@ -1,0 +1,11 @@
+/Include
+/Lib
+/Scripts
+/Notes
+*.txt
+*.json
+*.csv
+*.spec
+*.cfg
+*.rst
+
