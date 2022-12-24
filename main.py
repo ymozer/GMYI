@@ -296,7 +296,7 @@ Print all data collection function outputs to terminal.
 
 
 def all_data_collection_print():
-    usb_devices()
+    #usb_devices()
     print(str(os_info()))
     print(str(cpu_info()))
     print(str(mem_info()))
