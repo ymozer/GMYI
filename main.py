@@ -36,10 +36,12 @@ from cpuinfo import get_cpu_info
 import platform
 from datetime import datetime
 import subprocess
+import sys
+import getopt
 import wmi
 import pandas as pd
 
-# to get rid of print clipping to console and files 
+# to get rid of print clipping to console and files
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 200)
 
@@ -58,7 +60,7 @@ def get_size(bytes, suffix="B"):
         bytes /= factor
 
 
-# Operating system and general information about machine 
+# Operating system and general information about machine
 def os_info():
     uname = platform.uname()
     boot_time_timestamp = psutil.boot_time()
@@ -126,6 +128,8 @@ def mem_info():
 '''
 This function's structure can change to switch-case. It may be better??
 '''
+
+
 def disk_info():
     partitions = psutil.disk_partitions()
     disk_io = psutil.disk_io_counters()
@@ -161,11 +165,14 @@ def disk_info():
                 count = count+1
     return df
 
+
 '''
 Network info function printing kinda mess... 
 For converting data to Dataframe, we can take only network connected interface.
 So we don't need other interfaces that are not in use...
 '''
+
+
 def network_info():
     # Network information
     print("="*40, "Network Information", "="*40)
@@ -216,18 +223,22 @@ def gpu_info():
 
     print(tabulate(list_gpus, headers=("id", "name", "load", "free memory", "used memory", "total memory",
                                        "temperature", "uuid")))
-    print() # new line 
+    print()  # new line
+
 
 def usb_devices():
     import win32com.client
 
-    wmi = win32com.client.GetObject ("winmgmts:")
-    for usb in wmi.InstancesOf ("Win32_USBHub"):
+    wmi = win32com.client.GetObject("winmgmts:")
+    for usb in wmi.InstancesOf("Win32_USBHub"):
         print(usb.FriendlyName)
+
 
 '''
 Can be improved... Some programs doesn't show up with wmic command.
 '''
+
+
 def installed_programs():
     # traverse the software list
     print('\n', "="*40, "Installed Programs", "="*40)
@@ -259,46 +270,73 @@ def bios_info():
 
 
 '''
+Write all data collection function outputs to file.
+'''
+
+
+def all_data_collection_write(filename, format):
+    match format:
+        case "json":
+            pass
+        case "csv":
+            pass
+        case "txt":
+            with open(f"{filename}.{format}", "w", encoding='utf-8') as f:
+                f.writelines(f"{str(os_info())}\n")
+                f.writelines(f"{str(cpu_info())}\n")
+                f.writelines(f"{str(mem_info())}\n")
+                f.writelines(f"{str(disk_info())}\n")
+        case _:
+            sys.exit(f"Wrong file format supplied: {format}\nIt should be json, csv or txt")
+
+
+'''
+Print all data collection function outputs to terminal.
+'''
+
+
+def all_data_collection_print():
+    usb_devices()
+    print(str(os_info()))
+    print(str(cpu_info()))
+    print(str(mem_info()))
+    print(str(disk_info()))
+    # print(network_info())
+    gpu_info()
+    update_status()
+    bios_info()
+    # print(installed_programs())
+
+
+'''
 main function for combining functions seperate data
 currently it writes outputs to txt file. Soon it will output json files 
 '''
 if __name__ == '__main__':
-    with open("test.txt", "w", encoding='utf-8') as f:
-        f.writelines(f"{str(os_info())}\n")
-        f.writelines(f"{str(cpu_info())}\n")
-        f.writelines(f"{str(mem_info())}\n")
-        f.writelines(f"{str(disk_info())}\n")
+    arg_list = sys.argv[1:]
+    opts = "how:p"
+    long_opts = ["help", "output_file", "all_write", "all_print"]
+    try:
+        arg, val = getopt.getopt(arg_list, opts, long_opts)
+        for current_arg, current_val in arg:
+            if current_arg in ("-h", "--help"):
+                print("--Manual Page--")
+                sys.exit()
+            if current_arg in ("-p", "--all_print"):
+                all_data_collection_print()
+            if current_arg in ("-w", "--all_write"):  # write
+                file_format = current_val if current_val != "" else val[0]
+                all_data_collection_write("GMYI_output", file_format)
+                print(f"File GMYI_output.{current_val} created in current directory.")
+            if current_arg in ("-o", "--output_file"):  # json or csv
+                print(f"{current_val} output file format is selected.")
+
+    except getopt.error as err:
+        print(str(err))
 
     # print(network_info())
     # gpu_info()
     # update_status()
     # bios_info()
-    #print(installed_programs())
-    usb_devices()
-
-
-''' NOTES for Powershell
-Get-Date: ...
-Get-Clipboard: ...
-Get-WmiObject -Class Win32_Volume | select Name, DeviceID, SerialNumber
-
-
-Get-CIMinstance or Get-WmiObject 
-Motherboard:  Get-WmiObject -Class Win32_baseboard
-Memory: Get-WmiObject -Class Win32_PhysicalMemory
-
-List all properties of class: Get-WmiObject Win32_bios | Get-Member
-Get specific property value: Get-WmiObject -Class Win32_PhysicalMemory | Select -ExpandProperty "Manufacturer"
-
-Get both the currently connected IPv4 and IPv6 IP addresses for the local machine and place on the clipboard:
-Get-NetIPAddress -InterfaceIndex $(Get-NetConnectionProfile | Select-Object -ExpandProperty InterfaceIndex) | Select-Object -ExpandProperty IPAddress | set-clipboard
-
-Get the currently connected IPv4 IP address for the local machine:
-PS C:\> $ip4 = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $(Get-NetConnectionProfile | Select-Object -ExpandProperty InterfaceIndex) | Select-Object -ExpandProperty IPAddress
-
-
-
-RESEARCH: 
-Amsi And Amsi.fail
-
-'''
+    # print(installed_programs())
+    # usb_devices()
