@@ -308,6 +308,25 @@ def all_data_collection_print():
     # print(installed_programs())
 
 
+def manual_page():
+    '''                                                    
+     $$$$$$\  $$\      $$\ $$\     $$\ $$$$$$\ 
+    $$  __$$\ $$$\    $$$ |\$$\   $$  |\_$$  _|
+    $$ /  \__|$$$$\  $$$$ | \$$\ $$  /   $$ |  
+    $$ |$$$$\ $$\$$\$$ $$ |  \$$$$  /    $$ |  
+    $$ |\_$$ |$$ \$$$  $$ |   \$$  /     $$ |  
+    $$ |  $$ |$$ |\$  /$$ |    $$ |      $$ |  
+    \$$$$$$  |$$ | \_/ $$ |    $$ |    $$$$$$\ 
+     \______/ \__|     \__|    \__|    \______|
+
+    GMYI - Give Me Your Info
+
+    -h or --help        : Prints this page to terminal.
+    -p or --all_print   : Prints all data collection function outputs to terminal.
+    -w or --all_write   : Writes all data collection function outputs to specified file format.                                  
+    '''
+
+
 '''
 main function for combining functions seperate data
 currently it writes outputs to txt file. Soon it will output json files 
@@ -316,11 +335,13 @@ if __name__ == '__main__':
     arg_list = sys.argv[1:]
     opts = "how:p"
     long_opts = ["help", "output_file", "all_write", "all_print"]
+    if len(sys.argv) == 1:
+        print("Use -h or --help for Manual Page.")
     try:
         arg, val = getopt.getopt(arg_list, opts, long_opts)
         for current_arg, current_val in arg:
             if current_arg in ("-h", "--help"):
-                print("--Manual Page--")
+                print(manual_page.__doc__)
                 sys.exit()
             if current_arg in ("-p", "--all_print"):
                 all_data_collection_print()
@@ -333,10 +354,3 @@ if __name__ == '__main__':
 
     except getopt.error as err:
         print(str(err))
-
-    # print(network_info())
-    # gpu_info()
-    # update_status()
-    # bios_info()
-    # print(installed_programs())
-    # usb_devices()
