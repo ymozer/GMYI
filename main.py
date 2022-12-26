@@ -39,6 +39,7 @@ import subprocess
 import sys
 import getopt
 import wmi
+import re
 import pandas as pd
 
 # to get rid of print clipping to console and files
@@ -226,12 +227,29 @@ def gpu_info():
     print()  # new line
 
 
-def usb_devices():
-    import win32com.client
+def run(cmd):
+    completed = subprocess.run(["powershell", "-Command", cmd], capture_output=True)
+    return completed
 
-    wmi = win32com.client.GetObject("winmgmts:")
-    for usb in wmi.InstancesOf("Win32_USBHub"):
-        print(usb.FriendlyName)
+
+def all_usb_devices():
+    # Python codecs for Turkish: iso8859_9 = latin5 = L5/ macturkish /ibm1026/IBM857=857
+    cmd = "Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match '^USB' } | Format-Table -AutoSize"
+    output = run(cmd)
+    lines = output.stdout.decode('IBM857')
+    strs = " ".join(lines.split()).replace('OK', '\nOK')
+    print(str(strs))
+
+
+def disk_usb_devices():
+    cmd = "Get-CimInstance -ClassName Win32_DiskDrive | where{$_.InterfaceType -eq 'USB'}"
+    output = run(cmd)
+    lines = output.stdout.decode('IBM857')
+    strs = " ".join(lines.split()).replace('-','').replace('Model','Model\n')
+    if strs == "":
+        print("There is no external disk drives connected to system.")
+    else:
+        print(str(strs))
 
 
 '''
@@ -296,7 +314,7 @@ Print all data collection function outputs to terminal.
 
 
 def all_data_collection_print():
-    #usb_devices()
+    # usb_devices()
     print(str(os_info()))
     print(str(cpu_info()))
     print(str(mem_info()))
@@ -333,13 +351,21 @@ currently it writes outputs to txt file. Soon it will output json files
 '''
 if __name__ == '__main__':
     arg_list = sys.argv[1:]
-    opts = "how:p"
-    long_opts = ["help", "output_file", "all_write", "all_print"]
+    opts = "how:pue"
+    long_opts = ["help", "output_file", "all_write", "all_print", "external_usb_disk"]
     if len(sys.argv) == 1:
-        print("Use -h or --help for Manual Page.")
+        print("Showing Manual Page.")
+        print(manual_page.__doc__)
+        sys.exit()
     try:
         arg, val = getopt.getopt(arg_list, opts, long_opts)
         for current_arg, current_val in arg:
+            if current_arg in ("-u", "--all_usb"):
+                all_usb_devices()
+                sys.exit()
+            if current_arg in ("-e", "--external_usb_disk"):
+                disk_usb_devices()
+                sys.exit()
             if current_arg in ("-h", "--help"):
                 print(manual_page.__doc__)
                 sys.exit()
