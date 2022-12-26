@@ -245,7 +245,7 @@ def disk_usb_devices():
     cmd = "Get-CimInstance -ClassName Win32_DiskDrive | where{$_.InterfaceType -eq 'USB'}"
     output = run(cmd)
     lines = output.stdout.decode('IBM857')
-    strs = " ".join(lines.split()).replace('-','').replace('Model','Model\n')
+    strs = " ".join(lines.split()).replace('-', '').replace('Model', 'Model\n')
     if strs == "":
         print("There is no external disk drives connected to system.")
     else:
@@ -341,7 +341,9 @@ def manual_page():
 
     -h or --help        : Prints this page to terminal.
     -p or --all_print   : Prints all data collection function outputs to terminal.
-    -w or --all_write   : Writes all data collection function outputs to specified file format.                                  
+    -w or --all_write   : Writes all data collection function outputs to specified file format.
+    -u or --all_usb     : Prints all active USB devices connected or in the system to terminal. 
+    -e or --usb_disk    : Prints all active USB disk drives connected to the system. 
     '''
 
 
@@ -363,7 +365,7 @@ if __name__ == '__main__':
             if current_arg in ("-u", "--all_usb"):
                 all_usb_devices()
                 sys.exit()
-            if current_arg in ("-e", "--external_usb_disk"):
+            if current_arg in ("-e", "--usb_disk"):
                 disk_usb_devices()
                 sys.exit()
             if current_arg in ("-h", "--help"):
