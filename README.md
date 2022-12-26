@@ -28,6 +28,13 @@ GMYI can sit on some website that can downloaded and executed by rubber ducky sc
 * Social Engineering (e-mail)
 * ??
 
+## Development
+Python version >= 3.11
+
+```bash
+python -m venv .
+pip install -r ./requirements.txt
+```
 
 ## Flowchart
 ![Flowchart](/Media/GMYI_flowchart.png)
