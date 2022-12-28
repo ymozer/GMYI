@@ -39,6 +39,7 @@ import subprocess
 import sys
 import getopt
 import wmi
+import re
 import pandas as pd
 
 # to get rid of print clipping to console and files
@@ -168,34 +169,30 @@ def disk_info():
     return df
 
 
-'''
-Network info function printing kinda mess... 
-For converting data to Dataframe, we can take only network connected interface.
-So we don't need other interfaces that are not in use...
-'''
-
-
 def network_info():
     # Network information
     print("="*40, "Network Information", "="*40)
     # get all network interfaces (virtual and physical)
     if_addrs = psutil.net_if_addrs()
+    # get network stats
+    net_stat = psutil.net_if_stats()
     for interface_name, interface_addresses in if_addrs.items():
+        isup=net_stat[f'{interface_name}'].isup #is up & running?
+        print(interface_name)
+        print(f"isup: {isup}")
         for address in interface_addresses:
-            print(f"=== Interface: {interface_name} ===")
-            if str(address.family) == 'AddressFamily.AF_INET':
-                print(f"  IP Address: {address.address}")
-                print(f"  Netmask: {address.netmask}")
-                print(f"  Broadcast IP: {address.broadcast}")
-            elif str(address.family) == 'AddressFamily.AF_PACKET':
-                print(f"  MAC Address: {address.address}")
-                print(f"  Netmask: {address.netmask}")
-                print(f"  Broadcast MAC: {address.broadcast}")
+            flags=net_stat[f'{interface_name}'].flags
+            if int(address.family) == 2:  # IPv4
+                print(f"IPv4 Address: {address.address}")
+            if int(address.family) == 23:  # IPv6
+                print(f"IPv6 Address: {address.address}")
+            if int(address.family) == -1:  # link
+                print(f"link: {address.address}")
+        print("="*20)
     # get IO statistics since boot
     net_io = psutil.net_io_counters()
     print(f"Total Bytes Sent: {get_size(net_io.bytes_sent)}")
     print(f"Total Bytes Received: {get_size(net_io.bytes_recv)}")
-
 
 def gpu_info():
     # GPU information
@@ -228,22 +225,32 @@ def gpu_info():
     print()  # new line
 
 
-def usb_devices():
-    disk_list = "\"Get-WmiObject win32_diskdrive | where{$_.Interfacetype -eq 'USB'}\""
-    usb_list = "\"Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match '^USB' } \""
-
-    disk_list_out = subprocess.call(PS_PATH+" "+disk_list, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    usb_list_out = subprocess.call(PS_PATH+" "+usb_list, shell=True, stderr=subprocess.STDOUT)
-
-    print('\n', str(usb_list_out)[1:-1])
+def run(cmd):
+    completed = subprocess.run(["powershell", "-Command", cmd], capture_output=True)
+    return completed
 
 
-'''
-Can be improved... Some programs doesn't show up with wmic command.
-'''
+def all_usb_devices():
+    # Python codecs for Turkish: iso8859_9 = latin5 = L5/ macturkish /ibm1026/IBM857=857
+    cmd = "Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match '^USB' } | Format-Table -AutoSize"
+    output = run(cmd)
+    lines = output.stdout.decode('IBM857')
+    strs = " ".join(lines.split()).replace('OK', '\nOK')
+    print(str(strs))
 
+
+def disk_usb_devices():
+    cmd = "Get-CimInstance -ClassName Win32_DiskDrive | where{$_.InterfaceType -eq 'USB'}"
+    output = run(cmd)
+    lines = output.stdout.decode('IBM857')
+    strs = " ".join(lines.split()).replace('-', '').replace('Model', 'Model\n')
+    if strs == "":
+        print("There is no external disk drives connected to system.")
+    else:
+        print(str(strs))
 
 def installed_programs():
+    # Can be improved... Some programs doesn't show up with wmic command.
     # traverse the software list
     print('\n', "="*40, "Installed Programs", "="*40)
     Data = subprocess.check_output(['wmic', 'product', 'get', 'name'])
@@ -273,12 +280,11 @@ def bios_info():
     print('\n', str(a)[1:-1])
 
 
-'''
-Write all data collection function outputs to file.
-'''
-
-
 def all_data_collection_write(filename, format):
+    '''
+    Write all data collection function outputs to file.
+    NOTE: Currently not fully working!!
+    '''
     match format:
         case "json":
             pass
@@ -293,22 +299,20 @@ def all_data_collection_write(filename, format):
         case _:
             sys.exit(f"Wrong file format supplied: {format}\nIt should be json, csv or txt")
 
-
-'''
-Print all data collection function outputs to terminal.
-'''
-
-
 def all_data_collection_print():
-    # usb_devices()
-    print(str(os_info()))
-    print(str(cpu_info()))
-    print(str(mem_info()))
-    print(str(disk_info()))
-    # print(network_info())
-    gpu_info()
-    update_status()
-    bios_info()
+    '''
+    Print all data collection function outputs to terminal.
+    '''
+    # print(str(os_info()))
+    # print(str(cpu_info()))
+    # print(str(mem_info()))
+    # print(str(disk_info()))
+    print(network_info())
+    # gpu_info()
+    # all_usb_devices()
+    # disk_usb_devices()
+    # update_status()
+    # bios_info()
     # print(installed_programs())
 
 
@@ -327,7 +331,9 @@ def manual_page():
 
     -h or --help        : Prints this page to terminal.
     -p or --all_print   : Prints all data collection function outputs to terminal.
-    -w or --all_write   : Writes all data collection function outputs to specified file format.                                  
+    -w or --all_write   : Writes all data collection function outputs to specified file format.
+    -u or --all_usb     : Prints all active USB devices connected or in the system to terminal. 
+    -e or --usb_disk    : Prints all active USB disk drives connected to the system. 
     '''
 
 
@@ -337,15 +343,15 @@ currently it writes outputs to txt file. Soon it will output json files
 '''
 if __name__ == '__main__':
     arg_list = sys.argv[1:]
-    opts = "how:pu"
-    long_opts = ["help", "output_file", "all_write", "all_print"]
+    opts = "how:pue"
+    long_opts = ["help", "output_file", "all_write", "all_print", "external_usb_disk"]
     if len(sys.argv) == 1:
-        print("Use -h or --help for Manual Page.")
+        print("Showing Manual Page.")
+        print(manual_page.__doc__)
+        sys.exit()
     try:
         arg, val = getopt.getopt(arg_list, opts, long_opts)
         for current_arg, current_val in arg:
-            if current_arg in ("-u", "--usb"):
-                usb_devices()
             if current_arg in ("-h", "--help"):
                 print(manual_page.__doc__)
                 sys.exit()

