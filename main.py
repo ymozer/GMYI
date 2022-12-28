@@ -45,6 +45,8 @@ import pandas as pd
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 200)
 
+PS_PATH = "%SystemRoot%\system32\WindowsPowerShell\\v1.0\powershell.exe"
+
 
 def get_size(bytes, suffix="B"):
     """
@@ -227,11 +229,13 @@ def gpu_info():
 
 
 def usb_devices():
-    import win32com.client
+    disk_list = "\"Get-WmiObject win32_diskdrive | where{$_.Interfacetype -eq 'USB'}\""
+    usb_list = "\"Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match '^USB' } \""
 
-    wmi = win32com.client.GetObject("winmgmts:")
-    for usb in wmi.InstancesOf("Win32_USBHub"):
-        print(usb.FriendlyName)
+    disk_list_out = subprocess.call(PS_PATH+" "+disk_list, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    usb_list_out = subprocess.call(PS_PATH+" "+usb_list, shell=True, stderr=subprocess.STDOUT)
+
+    print('\n', str(usb_list_out)[1:-1])
 
 
 '''
@@ -296,7 +300,7 @@ Print all data collection function outputs to terminal.
 
 
 def all_data_collection_print():
-    #usb_devices()
+    # usb_devices()
     print(str(os_info()))
     print(str(cpu_info()))
     print(str(mem_info()))
@@ -333,13 +337,15 @@ currently it writes outputs to txt file. Soon it will output json files
 '''
 if __name__ == '__main__':
     arg_list = sys.argv[1:]
-    opts = "how:p"
+    opts = "how:pu"
     long_opts = ["help", "output_file", "all_write", "all_print"]
     if len(sys.argv) == 1:
         print("Use -h or --help for Manual Page.")
     try:
         arg, val = getopt.getopt(arg_list, opts, long_opts)
         for current_arg, current_val in arg:
+            if current_arg in ("-u", "--usb"):
+                usb_devices()
             if current_arg in ("-h", "--help"):
                 print(manual_page.__doc__)
                 sys.exit()
