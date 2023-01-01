@@ -3,6 +3,8 @@
 /Lib
 /Scripts
 /Notes
+/process
+
 *.txt
 *.json
 *.csv

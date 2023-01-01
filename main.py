@@ -10,9 +10,9 @@ For more information: https://github.com/ymozer/GMYI
 NOTE(s):
 !!! This part contains to-do's that needs to be done urgently !!!
 * Convert all data collecting functions to dataframe output functions. 
-* Change installed_programs func for getting all programs and outputs by alphabetic order.
-* USB devices information function
-* Need to convert this software to some kind an executable file.   
+* Change installed_programs func for getting all programs and outputs by alphabetic order. --> DONE
+* USB devices information function --> DONE
+* Need to convert this software to some kind an executable file.   --> DONE
     After running software, it needs to output collected data file to current directory (or tmp).
 * We can have a function that detects antivirus softwares and Windows Defender status.
 * Browser data collection (especially Chrome)
@@ -20,12 +20,13 @@ NOTE(s):
 THOUGHTS:
 * We don't need 1 row for all the data. we can create seperate file outputs (json/csv)
 * Windows Defender disabling ???
-* Posting output files to webserver/Database (flask, sqllite)???
+* Posting output files to webserver/Database (flask, sqllite) or mail???
 * Deobfuscation...
 * Limit imports for performance (import only used functions from libraries)
 * Screenshot/Recording ability as well as access to microphone & camera. 
     (pyautogui, mss, wx, openCV, PyAudio, SpeechRecognition)
 * Keylogger ability (pynput)
+* check with intrrupt which proccess started 
 '''
 
 from tabulate import tabulate
@@ -41,6 +42,8 @@ import getopt
 import wmi
 import re
 import pandas as pd
+import sched
+import time
 
 # to get rid of print clipping to console and files
 pd.set_option('display.max_columns', None)
@@ -92,7 +95,7 @@ def cpu_info():
     min_freq = f"{cpufreq.min:.2f}Mhz"
     total_usage = f"{psutil.cpu_percent(interval=2)}%"
 
-    #dizi = []
+    # dizi = []
     # for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
     #     a = (f"Core {i}: {percentage}%")
     #     dizi.append(a)
@@ -106,7 +109,6 @@ def cpu_info():
         "Total CPU Usage": total_usage
     }, index=[0])
     return df
-
 
 # Memory information converts to DataFrame
 def mem_info():
@@ -170,29 +172,30 @@ def disk_info():
 
 
 def network_info():
-    # Network information
-    print("="*40, "Network Information", "="*40)
+    output =(f"{'='*40}Network Information{'='*40}\n")
     # get all network interfaces (virtual and physical)
     if_addrs = psutil.net_if_addrs()
     # get network stats
     net_stat = psutil.net_if_stats()
     for interface_name, interface_addresses in if_addrs.items():
-        isup=net_stat[f'{interface_name}'].isup #is up & running?
-        print(interface_name)
-        print(f"isup: {isup}")
+        isup = net_stat[f'{interface_name}'].isup  # is up & running?
+        output = output + interface_name + "\n"
+        output = output + f"isup: {isup}\n" 
         for address in interface_addresses:
-            flags=net_stat[f'{interface_name}'].flags
+            # flags=net_stat[f'{interface_name}'].flags
             if int(address.family) == 2:  # IPv4
-                print(f"IPv4 Address: {address.address}")
+                output = output + f"IPv4 Address: {address.address}\n"
             if int(address.family) == 23:  # IPv6
-                print(f"IPv6 Address: {address.address}")
+                output = output + f"IPv6 Address: {address.address}\n"
             if int(address.family) == -1:  # link
-                print(f"link: {address.address}")
-        print("="*20)
+                output = output + f"link: {address.address}\n"
+        output = output + ("="*20) + "\n"
     # get IO statistics since boot
     net_io = psutil.net_io_counters()
-    print(f"Total Bytes Sent: {get_size(net_io.bytes_sent)}")
-    print(f"Total Bytes Received: {get_size(net_io.bytes_recv)}")
+    output = output + f"Total Bytes Sent: {get_size(net_io.bytes_sent)}\n" 
+    output=output + f"Total Bytes Received: {get_size(net_io.bytes_recv)}\n"
+    return output
+
 
 def gpu_info():
     # GPU information
@@ -220,9 +223,8 @@ def gpu_info():
             gpu_total_memory, gpu_temperature, gpu_uuid
         ))
 
-    print(tabulate(list_gpus, headers=("id", "name", "load", "free memory", "used memory", "total memory",
+    return (tabulate(list_gpus, headers=("id", "name", "load", "free memory", "used memory", "total memory",
                                        "temperature", "uuid")))
-    print()  # new line
 
 
 def run(cmd):
@@ -230,54 +232,114 @@ def run(cmd):
     return completed
 
 
-def all_usb_devices():
-    # Python codecs for Turkish: iso8859_9 = latin5 = L5/ macturkish /ibm1026/IBM857=857
-    cmd = "Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match '^USB' } | Format-Table -AutoSize"
+def get_language():
+    cmd = "(Get-UICulture).Name"
     output = run(cmd)
-    lines = output.stdout.decode('IBM857')
-    strs = " ".join(lines.split()).replace('OK', '\nOK')
-    print(str(strs))
+    lines = output.stdout.decode('utf-8')
+    lan_name=lines.split()[0][0:2]
+    return lan_name
+
+
+def cpu_usage():
+    cmd = ''' # Source: https://xkln.net/blog/analyzing-cpu-usage-with-powershell-wmi-and-excel/
+        (Get-Date).ToString("yyyy-MM-dd HH:mm:ss.ms"), ((Get-CimInstance -Query "select Name, PercentProcessorTime from Win32_PerfFormattedData_PerfOS_Processor" | Sort-Object -Property Name).PercentProcessorTime -join ",") -join ","
+    '''
+    # the first value is the timestamp, followed by the total usage, followed by each core.
+    output = run(cmd)
+    lines = output.stdout.decode('utf-8')
+    return lines
+    
+def all_usb_devices(*args):  # Status, Class, FriendlyName, InstanceId
+    # Python codecs for Turkish: iso8859_9 = latin5 = L5/ macturkish /ibm1026/IBM857=857
+    cmd = f"Get-PnpDevice -PresentOnly | Where-Object {{ $_.InstanceId -match '^USB' }} | Select-Object {args} | Format-Table -AutoSize"
+    output = run(cmd)
+
+    if get_language() == "tr":  # check if system is Turkish then decode accordingly
+        lines = output.stdout.decode('857')
+        return lines
+    if get_language() == "en":
+        lines = output.stdout.decode('utf-8')
+        return lines
+    else:
+        print("System is neither Turkish nor English.\nDecoding as UTF-8")
+        lines = output.stdout.decode('utf-8')
+        return lines
 
 
 def disk_usb_devices():
     cmd = "Get-CimInstance -ClassName Win32_DiskDrive | where{$_.InterfaceType -eq 'USB'}"
     output = run(cmd)
-    lines = output.stdout.decode('IBM857')
-    strs = " ".join(lines.split()).replace('-', '').replace('Model', 'Model\n')
-    if strs == "":
-        print("There is no external disk drives connected to system.")
-    else:
-        print(str(strs))
+    lines = output.stdout.decode('utf-8')
+    return lines
+
 
 def installed_programs():
-    # Can be improved... Some programs doesn't show up with wmic command.
-    # traverse the software list
-    print('\n', "="*40, "Installed Programs", "="*40)
-    Data = subprocess.check_output(['wmic', 'product', 'get', 'name'])
-    a = str(Data)
-    # try block
-    try:
-        # arrange the string
-        for i in range(len(a)):
-            print(a.split("\\r\\r\\n")[6:][i])
-    except IndexError as e:
-        print("All Done")
+    cmd = ''' # Source: https://bobcares.com/blog/powershell-list-installed-software/
+        $list=@()
+        $InstalledSoftwareKey="SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+        $InstalledSoftware=[microsoft.win32.registrykey]::OpenRemoteBaseKey('LocalMachine',$pcname)
+        $RegistryKey=$InstalledSoftware.OpenSubKey($InstalledSoftwareKey)
+        $SubKeys=$RegistryKey.GetSubKeyNames()
+        Foreach ($key in $SubKeys){
+        $thisKey=$InstalledSoftwareKey+"\\"+$key
+        $thisSubKey=$InstalledSoftware.OpenSubKey($thisKey)
+        $obj = New-Object PSObject
+        $obj | Add-Member -MemberType NoteProperty -Name "DisplayName" -Value $($thisSubKey.GetValue("DisplayName"))
+        $obj | Add-Member -MemberType NoteProperty -Name "DisplayVersion" -Value $($thisSubKey.GetValue("DisplayVersion"))
+        $list += $obj
+        }
+        $list | where { $_.DisplayName } | select  DisplayName, DisplayVersion | FT
+    '''
+    output = run(cmd)
+    lines = output.stdout.decode('857')
+    return lines
 
 
 def update_status():
     # List of updates on system
     print('\n', "="*40, "List of Updates on System", "="*40)
     a = os.system('cmd /c wmic qfe list')
-    print('\n', str(a)[1:-1])
+    return ('\n', str(a)[1:-1])
 
 
 def bios_info():
-    '''
-    powershell: Get-WmiObject -Class Win32_Bios | Format-List -Property *
-    '''
-    print('\n', "="*40, "BIOS Info", "="*40)
-    a = os.system('wmic bios get version')
-    print('\n', str(a)[1:-1])
+    cmd = "Get-WmiObject -Class Win32_Bios | Format-List -Property *"
+    output = run(cmd)
+    lines = output.stdout.decode("utf-8")
+    return lines
+
+
+def get_process():
+    cmd = "Get-Process | Where-Object {$_.WorkingSet -gt 20000000}"  # Get processes that have working set greater than 20 MB
+    df = pd.DataFrame(columns=['Handles', 'NPM(K)', 'PM(K)', 'WS(K)', 'CPU(s)', 'Id', 'SI', 'ProcessName'], index=[0])
+    output = run(cmd)
+    lines = output.stdout.decode("utf-8").replace("\r", "").splitlines()
+    striped = []
+    for l in lines:
+        striped.append(l.rstrip().replace("             ","  null ").split())
+    count=0
+    del striped[0], striped[0], striped[0], striped[len(striped)-1], striped[len(striped)-1] # why not pop
+    for value in striped:
+        for i in range(len(df.columns)):
+            match i:
+                case 0:
+                    df.at[count, 'Handles'] = value[i]
+                case 1:
+                    df.at[count, 'NPM(K)'] = value[i]
+                case 2:
+                    df.at[count, 'PM(K)'] = value[i]
+                case 3:
+                    df.at[count, 'WS(K)'] = value[i]
+                case 4:
+                    df.at[count, 'CPU(s)'] = value[i]
+                case 5:
+                    df.at[count, 'Id'] = value[i]
+                case 6:
+                    df.at[count, 'SI'] = value[i]
+                case 7:
+                    df.at[count, 'ProcessName'] = value[i]
+        count=count+1
+    return df
 
 
 def all_data_collection_write(filename, format):
@@ -285,35 +347,50 @@ def all_data_collection_write(filename, format):
     Write all data collection function outputs to file.
     NOTE: Currently not fully working!!
     '''
+    
     match format:
         case "json":
             pass
         case "csv":
             pass
         case "txt":
-            with open(f"{filename}.{format}", "w", encoding='utf-8') as f:
+            with open(f"{filename}_general_infos.{format}", "a+", encoding='utf-8') as f:
                 f.writelines(f"{str(os_info())}\n")
                 f.writelines(f"{str(cpu_info())}\n")
                 f.writelines(f"{str(mem_info())}\n")
-                f.writelines(f"{str(disk_info())}\n")
+                f.write(f"{str(disk_info())}\n{str(network_info())}\n{str(gpu_info())}\n{str(all_usb_devices())}\n\
+                    {str(disk_usb_devices())}\n{str(update_status())}\n{str(bios_info())}\n{str(installed_programs())}\n\
+                        {get_language()}\n")
+            with open(f"{filename}_cpu_usage.csv", "a+", encoding='utf-8') as f:
+                f.write(cpu_usage()[:-1])
+            path="Process"
+            isExist = os.path.exists(path)
+            if not isExist:
+                os.makedirs(path)
+                print(f"{path} dir created.")
+            time.sleep(3)
+            get_process().to_csv(f'./Process/processes{count_loop}.csv')
+
+            
         case _:
             sys.exit(f"Wrong file format supplied: {format}\nIt should be json, csv or txt")
+
 
 def all_data_collection_print():
     '''
     Print all data collection function outputs to terminal.
     '''
-    # print(str(os_info()))
-    # print(str(cpu_info()))
-    # print(str(mem_info()))
-    # print(str(disk_info()))
+    print(str(os_info()))
+    print(str(cpu_info()))
+    print(str(mem_info()))
+    print(str(disk_info()))
     print(network_info())
-    # gpu_info()
-    # all_usb_devices()
-    # disk_usb_devices()
-    # update_status()
-    # bios_info()
-    # print(installed_programs())
+    gpu_info()
+    all_usb_devices()
+    disk_usb_devices()
+    update_status()
+    bios_info()
+    print(installed_programs())
 
 
 def manual_page():
@@ -343,7 +420,7 @@ currently it writes outputs to txt file. Soon it will output json files
 '''
 if __name__ == '__main__':
     arg_list = sys.argv[1:]
-    opts = "how:pue"
+    opts = "how:irlupe"
     long_opts = ["help", "output_file", "all_write", "all_print", "external_usb_disk"]
     if len(sys.argv) == 1:
         print("Showing Manual Page.")
@@ -363,6 +440,25 @@ if __name__ == '__main__':
                 print(f"File GMYI_output.{current_val} created in current directory.")
             if current_arg in ("-o", "--output_file"):  # json or csv
                 print(f"{current_val} output file format is selected.")
+            if current_arg in ("-r", "--process"):
+                get_process()
+            if current_arg in ("-u", "--usb"):
+                print(all_usb_devices("Status", "Class", "FriendlyName", "InstanceId"))
+            if current_arg in ("-e", "--flash_drives"):
+                print(disk_usb_devices())
+            if current_arg in ("-i", "--programs"):
+                print(installed_programs())
+            if current_arg in ("-l", "--loop"):
+                global count_loop
+                count_loop = 0
+                s = sched.scheduler()
+                while True:
+                    print("Start Time : ", datetime.now(), "\n")
+                    event1 = s.enter(3, 1, all_data_collection_write, argument=("loop", "txt"))
+                    print("Event Created : \n", event1)
+                    s.run()
+                    print("End   Time : ", datetime.now())
+                    count_loop= count_loop+1
 
     except getopt.error as err:
         print(str(err))
