@@ -51,6 +51,7 @@ pd.set_option('display.width', 200)
 
 PS_PATH = "%SystemRoot%\system32\WindowsPowerShell\\v1.0\powershell.exe"
 
+count_loop=0
 
 def get_size(bytes, suffix="B"):
     """
@@ -199,32 +200,43 @@ def network_info():
 
 def gpu_info():
     # GPU information
+    df = pd.DataFrame(columns=("id", "name", "load", "memoryFree", "memoryUsed", "memoryTotal",
+                    "temperature", "uuid"), index=[0])
     print('\n', "="*40, "GPU Details", "="*40)
     gpus = GPUtil.getGPUs()
     list_gpus = []
+    count=0
     for gpu in gpus:
         # get the GPU id
+        df.at[count, 'id'] = gpu.id
         gpu_id = gpu.id
         # name of GPU
         gpu_name = gpu.name
+        df.at[count, 'name'] = gpu.name
         # get % percentage of GPU usage of that GPU
         gpu_load = f"{gpu.load*100}%"
+        df.at[count, 'load'] = f"{gpu.load*100}%"
         # get free memory in MB format
         gpu_free_memory = f"{gpu.memoryFree}MB"
+        df.at[count, 'memoryFree'] = f"{gpu.memoryFree}MB"
         # get used memory
         gpu_used_memory = f"{gpu.memoryUsed}MB"
+        df.at[count, 'memoryUsed'] = gpu.memoryUsed
         # get total memory
         gpu_total_memory = f"{gpu.memoryTotal}MB"
+        df.at[count, 'memoryTotal'] = gpu.memoryTotal
         # get GPU temperature in Celsius
         gpu_temperature = f"{gpu.temperature} °C"
+        df.at[count, 'temperature'] = gpu.temperature
         gpu_uuid = gpu.uuid
+        df.at[count, 'uuid'] = gpu.uuid
         list_gpus.append((
             gpu_id, gpu_name, gpu_load, gpu_free_memory, gpu_used_memory,
             gpu_total_memory, gpu_temperature, gpu_uuid
         ))
+        count=count+1
 
-    return (tabulate(list_gpus, headers=("id", "name", "load", "free memory", "used memory", "total memory",
-                                       "temperature", "uuid")))
+    return df
 
 
 def run(cmd):
@@ -267,10 +279,28 @@ def all_usb_devices(*args):  # Status, Class, FriendlyName, InstanceId
 
 
 def disk_usb_devices():
-    cmd = "Get-CimInstance -ClassName Win32_DiskDrive | where{$_.InterfaceType -eq 'USB'}"
+    cmd = "Get-CimInstance -ClassName Win32_DiskDrive | where{$_.InterfaceType -eq 'USB'} | Format-List -property 'DeviceID', 'Caption', 'Partitions', 'Size', 'Model'"
+    # cmd = "Get-CimInstance -ClassName Win32_DiskDrive | where{$_.InterfaceType -eq 'USB'} |  Format-Table -HideTableHeaders -Property DeviceID ,aaaa, Caption, asdasdasd, Partitions, asdasdasdasd,Size ,asdasdasd,Model "
     output = run(cmd)
-    lines = output.stdout.decode('utf-8')
-    return lines
+    lines = output.stdout.decode('857').replace("\r", "").splitlines()
+    stripped=[]
+    count = 0
+    for l in lines:
+        stripped.append(l.strip().split(':'))
+        stripped[count][len(stripped[count])-1] = stripped[count][len(stripped[count])-1].strip()
+        stripped[count][len(stripped[count])-2] = stripped[count][len(stripped[count])-2].strip()
+        count = count+1
+    del stripped[0], stripped[0], stripped[len(stripped)-1], stripped[len(stripped)-1], stripped[len(stripped)-1]
+    df = pd.DataFrame(columns=['Property', 'Value'])
+    for value in stripped:
+        for i in range(len(df.columns)):
+            match i:
+                case 0:
+                    df.at[count, 'Property'] = value[i]
+                case 1:
+                    df.at[count, 'Value'] = value[i]
+        count = count+1
+    return df
 
 
 def installed_programs():
@@ -291,8 +321,27 @@ def installed_programs():
         $list | where { $_.DisplayName } | select  DisplayName, DisplayVersion | FT
     '''
     output = run(cmd)
-    lines = output.stdout.decode('857')
-    return lines
+    lines = output.stdout.decode('857').replace("\r", "").splitlines()
+    strip_list=[]
+    count=0
+    for l in lines:
+        strip_list.append(l.strip().split("    ", 1))
+        strip_list[count][len(strip_list[count])-1] = strip_list[count][len(strip_list[count])-1].lstrip()
+        if len(strip_list[count]) == 1:
+            strip_list[count].insert(count,"null")
+        count=count+1
+    del strip_list[0], strip_list[0], strip_list[0], strip_list[len(strip_list)-1], strip_list[len(strip_list)-1]
+    
+    df = pd.DataFrame(columns=['DisplayName', 'DisplayVersion'], index=[0])
+    for value in strip_list:
+        for i in range(len(df.columns)):
+            match i:
+                case 0:
+                    df.at[count, 'DisplayName'] = value[i]
+                case 1:
+                    df.at[count, 'DisplayVersion'] = value[i]
+        count = count+1
+    return df
 
 
 def update_status():
@@ -347,31 +396,56 @@ def all_data_collection_write(filename, format):
     Write all data collection function outputs to file.
     NOTE: Currently not fully working!!
     '''
-    
+    global count_loop
+    count_loop
     match format:
         case "json":
-            pass
+            get_process().to_json(f'./Process/processes{count_loop}.{format}', orient="table")
+            os_info().to_json(f'./os_info{count_loop}.{format}', orient="table")
+            cpu_info().to_json(f'./cpu_info{count_loop}.{format}', orient="table")
+            mem_info().to_json(f'./mem_info{count_loop}.{format}', orient="table")
+            disk_info().to_json(f'./disk_info{count_loop}.{format}', orient="table")
+            gpu_info().to_json(f'./gpu_info{count_loop}.{format}', orient="table")
+            disk_usb_devices().to_json(f'./flash_drives{count_loop}.{format}', orient="table") # bad format
+            installed_programs().to_json(f'./installed_programs{count_loop}.{format}', orient="table")
+            #all_usb_devices().to_json(f'./all_usb_devices{count_loop}.{format}', orient="table")
+            #bios_info().to_json(f'./bios_info{count_loop}.{format}', orient="table")
+            #update_status().to_json(f'./update_status{count_loop}.{format}', orient="table")
+            #cpu_usage().to_json(f'./cpu_usage{count_loop}.{format}', orient="table")
+            #get_language().to_json(f'./get_language{count_loop}.{format}', orient="table")
+
         case "csv":
-            pass
-        case "txt":
-            with open(f"{filename}_general_infos.{format}", "a+", encoding='utf-8') as f:
-                f.writelines(f"{str(os_info())}\n")
-                f.writelines(f"{str(cpu_info())}\n")
-                f.writelines(f"{str(mem_info())}\n")
-                f.write(f"{str(disk_info())}\n{str(network_info())}\n{str(gpu_info())}\n{str(all_usb_devices())}\n\
-                    {str(disk_usb_devices())}\n{str(update_status())}\n{str(bios_info())}\n{str(installed_programs())}\n\
-                        {get_language()}\n")
-            with open(f"{filename}_cpu_usage.csv", "a+", encoding='utf-8') as f:
+            '''
+            Currently only creates csv file for momentary CPU usage AND Processes
+            '''
+            with open(f"{filename}_cpu_usage.{format}", "a+", encoding='utf-8') as f:
                 f.write(cpu_usage()[:-1])
-            path="Process"
+            path = "Process"
             isExist = os.path.exists(path)
             if not isExist:
                 os.makedirs(path)
                 print(f"{path} dir created.")
             time.sleep(3)
-            get_process().to_csv(f'./Process/processes{count_loop}.csv')
-
-            
+            get_process().to_csv(f'./Process/processes{count_loop}.{format}')
+        case "txt":
+            if count_loop < 1:
+                with open(f"{filename}_general_infos.{format}", "a+", encoding='utf-8') as f:
+                    f.writelines(f"{str(os_info())}\n")
+                    f.writelines(f"{str(cpu_info())}\n")
+                    f.writelines(f"{str(mem_info())}\n")
+                    f.write(f"{str(disk_info())}\n{str(network_info())}\n{str(gpu_info())}\n{str(all_usb_devices())}\n\
+                        {str(disk_usb_devices())}\n{str(update_status())}\n{str(bios_info())}\n{str(installed_programs())}\n\
+                            {get_language()}\n")
+            else:
+                with open(f"{filename}_cpu_usage.{format}", "a+", encoding='utf-8') as f:
+                    f.write(cpu_usage()[:-1])
+                path="Process"
+                isExist = os.path.exists(path)
+                if not isExist:
+                    os.makedirs(path)
+                    print(f"{path} dir created.")
+                time.sleep(3)
+                get_process().to_csv(f'./Process/processes{count_loop}.csv')
         case _:
             sys.exit(f"Wrong file format supplied: {format}\nIt should be json, csv or txt")
 
@@ -405,12 +479,17 @@ def manual_page():
      \______/ \__|     \__|    \__|    \______|
 
     GMYI - Give Me Your Info
-
-    -h or --help        : Prints this page to terminal.
-    -p or --all_print   : Prints all data collection function outputs to terminal.
-    -w or --all_write   : Writes all data collection function outputs to specified file format.
-    -u or --all_usb     : Prints all active USB devices connected or in the system to terminal. 
-    -e or --usb_disk    : Prints all active USB disk drives connected to the system. 
+    
+    USAGE:
+    -h or --help                : Prints this page to terminal.
+    -l or --loop                : Writes to files in continous loop.
+    -o or --output-file         : Writes to file format: main.py -o txt/csv/json
+    -i or --installed_programs  : Prints installed programs with verisons. 
+    -r or --process             : Returns processess.
+    -p or --all_print           : Prints all data collection function outputs to terminal.
+    -w or --all_write           : Writes all data collection function outputs to specified file format.
+    -u or --usb                 : Prints all active USB devices connected or in the system to terminal. 
+    -e or --flash_drives        : Prints all active USB disk drives connected to the system. 
     '''
 
 
@@ -421,7 +500,8 @@ currently it writes outputs to txt file. Soon it will output json files
 if __name__ == '__main__':
     arg_list = sys.argv[1:]
     opts = "how:irlupe"
-    long_opts = ["help", "output_file", "all_write", "all_print", "external_usb_disk"]
+    long_opts = ["help", "output_file", "all_write", "all_print", "external_usb_disk",\
+         "loop", "usb", "flash_drives", "programs"]
     if len(sys.argv) == 1:
         print("Showing Manual Page.")
         print(manual_page.__doc__)
@@ -449,16 +529,15 @@ if __name__ == '__main__':
             if current_arg in ("-i", "--programs"):
                 print(installed_programs())
             if current_arg in ("-l", "--loop"):
-                global count_loop
-                count_loop = 0
+                count_loop=0
                 s = sched.scheduler()
                 while True:
                     print("Start Time : ", datetime.now(), "\n")
                     event1 = s.enter(3, 1, all_data_collection_write, argument=("loop", "txt"))
                     print("Event Created : \n", event1)
                     s.run()
-                    print("End   Time : ", datetime.now())
-                    count_loop= count_loop+1
+                    print("End Time : ", datetime.now())
+                    count_loop = count_loop+1
 
     except getopt.error as err:
         print(str(err))
