@@ -56,7 +56,7 @@ Current GMYI can get these information from Windows machine:
 
 Most important parts are last two ones: Processes and CPU usage.
 
-For using GMYI, you can use executable file or setup Python enviroment that explained [here.]() 
+For using GMYI, you can use executable file or setup Python enviroment that explained [here.](https://github.com/ymozer/GMYI#test-cases-and-general-information-about-gmyis-current-state) 
 Help page (`-h or --help` parameters) explains how to use GMYI. (Also contains cool logo ;) )
 All you need to do make sure you are working on Python version 3.11 or above and run:
 `python main.py` == `python main.py --help` == `python main.py -h`
