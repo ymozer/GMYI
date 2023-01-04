@@ -586,7 +586,7 @@ currently it writes outputs to txt file. Soon it will output json files
 '''
 if __name__ == '__main__':
     arg_list = sys.argv[1:]
-    opts = "hwl:bipuengocmeds"
+    opts = "hwl:bipuengocmedsf"
     long_opts = ["help", "all_write", "external_usb_disk",
                  "loop", "usb", "flash_drives", "programs", "boot", "network"]
     arguments = len(sys.argv) - 1
