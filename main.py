@@ -361,8 +361,34 @@ def update_status():
 def bios_info():
     cmd = "Get-WmiObject -Class Win32_Bios | Format-List -Property *"
     output = run(cmd)
-    lines = output.stdout.decode("utf-8")
-    return lines
+    lines = output.stdout.decode("utf-8").replace("\r", "").splitlines()
+    striped = []
+    for line in lines:
+        temp = line.split(':', 1)
+        if temp[0] == '':
+            continue
+        count = 0
+        for element in temp:
+            element = element.strip()
+            if element == '':
+                element = 'null'
+            temp[count] = element
+            count = count+1
+        if len(temp) < 2:
+            continue
+        striped.append(temp)
+    df = pd.DataFrame(columns=['Header', 'Value'], index=[0])
+    for value in striped:
+        for i in range(len(df.columns)):
+            match i:
+                case 0:
+                    # the number of handles that the process has opened
+                    df.at[count, 'Header'] = value[i]
+                case 1:
+                    # The amount of non-paged memory that the process is using, in kilobytes
+                    df.at[count, 'Value'] = value[i]
+        count = count+1
+    return df
 
 
 def get_process():
@@ -379,20 +405,28 @@ def get_process():
         for i in range(len(df.columns)):
             match i:
                 case 0:
+                    # the number of handles that the process has opened
                     df.at[count, 'Handles'] = value[i]
                 case 1:
+                    # The amount of non-paged memory that the process is using, in kilobytes
                     df.at[count, 'NPM(K)'] = value[i]
                 case 2:
+                    # The amount of pageable memory that the process is using, in kilobytes.
                     df.at[count, 'PM(K)'] = value[i]
                 case 3:
+                    # The size of the working set of the process, in kilobytes. The working set consists of the pages of memory that were recently referenced by the process.
                     df.at[count, 'WS(K)'] = value[i]
                 case 4:
+                    # The amount of processor time that the process has used on all processors, i
                     df.at[count, 'CPU(s)'] = value[i]
                 case 5:
+                    # The process ID (PID) of the process.
                     df.at[count, 'Id'] = value[i]
                 case 6:
+                    # Session ID ??
                     df.at[count, 'SI'] = value[i]
                 case 7:
+                    # The name of the process.
                     df.at[count, 'ProcessName'] = value[i]
         count = count+1
     return df
@@ -408,6 +442,7 @@ def all_data_collection_write(filename, format):
     global count_loop
     count_loop
 
+    # Check if directories exist in current dir.
     isExist = os.path.exists(results_path)
     if not isExist:
         os.makedirs(results_path)
@@ -419,6 +454,10 @@ def all_data_collection_write(filename, format):
 
     match format:
         case "json":
+            '''
+            Writes all data collection functions return (DataFrame) to Json file.
+            Not all functions supported yet.
+            '''
             if count_loop < 1:
                 get_process().to_json(f'./{processes_path}/processes{count_loop}.{format}', orient="table")
                 # cpu_usage().to_json(f'./{results_path}/cpu_usage{count_loop}.{format}', orient="table")
@@ -430,7 +469,7 @@ def all_data_collection_write(filename, format):
                 disk_usb_devices().to_json(f'./{results_path}/flash_drives{count_loop}.{format}', orient="table")  # bad format
                 installed_programs().to_json(f'./{results_path}/installed_programs{count_loop}.{format}', orient="table")
                 # all_usb_devices().to_json(f'./{results_path}/all_usb_devices{count_loop}.{format}', orient="table")
-                # bios_info().to_json(f'./{results_path}/bios_info{count_loop}.{format}', orient="table")
+                bios_info().to_json(f'./{results_path}/bios_info{count_loop}.{format}', orient="table")
                 # update_status().to_json(f'./{results_path}/update_status{count_loop}.{format}', orient="table")
                 # get_language().to_json(f'./{results_path}/get_language{count_loop}.{format}', orient="table")
             else:
@@ -440,69 +479,66 @@ def all_data_collection_write(filename, format):
         case "csv":
             '''
             Currently only creates csv file for momentary CPU usage AND Processes
+            NOTE: Add rest of the functions.
             '''
             with open(f"./{results_path}/cpu_usage.{format}", "a+", encoding='utf-8') as f:
                 f.write(cpu_usage()[:-1])
             get_process().to_csv(f'./{processes_path}/processes{count_loop}.{format}')
 
         case "txt":
+            '''
+            Save all data collection functions to Text files.
+            Some functions not supported yet.
+            '''
             if count_loop < 1:
-                isExist = os.path.exists(path)
-                if not isExist:
-                    os.makedirs(path)
-                    print(f"{path} dir created.")
-                with open(f"./{path}/os_info.{format}", "a+", encoding='utf-8') as f:
+                with open(f"./{results_path}/os_info.{format}", "a+", encoding='utf-8') as f:
                     f.write("\n")
                     np.savetxt(f, os_info().values, header=str(os_info().columns.values), fmt='%s')
                     print(f"file os_info.{format} saved in 'Results' directory.")
-                with open(f"./{path}/cpu_info.{format}", "a+", encoding='utf-8') as f:
+                with open(f"./{results_path}/cpu_info.{format}", "a+", encoding='utf-8') as f:
                     f.write("\n")
                     np.savetxt(f, cpu_info().values, header=str(cpu_info().columns.values), fmt='%s')
                     print(f"file cpu_info.{format} saved in 'Results' directory.")
-                with open(f"./{path}/mem_info.{format}", "a+", encoding='utf-8') as f:
+                with open(f"./{results_path}/mem_info.{format}", "a+", encoding='utf-8') as f:
                     f.write("\n")
                     np.savetxt(f, mem_info().values, header=str(mem_info().columns.values), fmt='%s')
                     print(f"file mem_info.{format} saved in 'Results' directory.")
-                with open(f"./{path}/disk_info.{format}", "a+", encoding='utf-8') as f:
+                with open(f"./{results_path}/disk_info.{format}", "a+", encoding='utf-8') as f:
                     f.write("\n")
                     np.savetxt(f, disk_info().values, header=str(disk_info().columns.values), fmt='%s')
                     print(f"file disk_info.{format} saved in 'Results' directory.")
-                # with open(f"./{path}/network_info.{format}", "a+", encoding='utf-8') as f:
+                # with open(f"./{results_path}/network_info.{format}", "a+", encoding='utf-8') as f:
                 #    f.write("\n")
                 #    np.savetxt(f, network_info().values, header=str(network_info().columns.values), fmt='%s')
-                with open(f"./{path}/gpu_info.{format}", "a+", encoding='utf-8') as f:
+                with open(f"./{results_path}/gpu_info.{format}", "a+", encoding='utf-8') as f:
                     f.write("\n")
                     np.savetxt(f, gpu_info().values, header=str(gpu_info().columns.values), fmt='%s')
                     print(f"file gpu_info.{format} saved in 'Results' directory.")
-                # with open(f"./{path}/all_usb_devices.{format}", "a+", encoding='utf-8') as f:
-                #    f.write("\n")
-                #    np.savetxt(f, all_usb_devices().values, header=str(all_usb_devices().columns.values), fmt='%s')
-                with open(f"./{path}/disk_usb_devices.{format}", "a+", encoding='utf-8') as f:
+                with open(f"./{results_path}/all_usb_devices.{format}", "a+", encoding='utf-8') as f:
+                   f.write("\n")
+                   np.savetxt(f, [str(all_usb_devices("Status", "Class", "FriendlyName", "InstanceId"))], fmt='%s')
+                   print(f"file all_usb_devices.{format} saved in 'Results' directory.")
+                with open(f"./{results_path}/disk_usb_devices.{format}", "a+", encoding='utf-8') as f:
                     f.write("\n")
                     np.savetxt(f, disk_usb_devices().values, header=str(disk_usb_devices().columns.values), fmt='%s')
                     print(f"file disk_usb_devices.{format} saved in 'Results' directory.")
-                # with open(f"./{path}/update_status.{format}", "a+", encoding='utf-8') as f:
+                # with open(f"./{results_path}/update_status.{format}", "a+", encoding='utf-8') as f:
                 #    f.write("\n")
                 #    np.savetxt(f, update_status().values, header=str(update_status().columns.values), fmt='%s')
-                # with open(f"./{path}/bios_info.{format}", "a+", encoding='utf-8') as f:
-                #    f.write("\n")
-                #    np.savetxt(f, bios_info().values, header=str(bios_info().columns.values), fmt='%s')
-                with open(f"./{path}/installed_programs.{format}", "a+", encoding='utf-8') as f:
+                with open(f"./{results_path}/bios_info.{format}", "a+", encoding='utf-8') as f:
+                   f.write("\n")
+                   np.savetxt(f, bios_info().values, header=str(bios_info().columns.values), fmt='%s')
+                with open(f"./{results_path}/installed_programs.{format}", "a+", encoding='utf-8') as f:
                     f.write("\n")
                     np.savetxt(f, installed_programs().values, header=str(installed_programs().columns.values), fmt='%s')
                     print(f"file installed_programs.{format} saved in 'Results' directory.")
-                # with open(f"./{path}/get_language.{format}", "a+", encoding='utf-8') as f:
+                # with open(f"./{results_path}/get_language.{format}", "a+", encoding='utf-8') as f:
                 #    f.write("\n")
                 #    np.savetxt(f, get_language().values, header=str(get_language().columns.values), fmt='%s')
             else:
-                with open(f"{filename}_cpu_usage.{format}", "a+", encoding='utf-8') as f:
+                with open(f"./{results_path}/{filename}_cpu_usage.{format}", "a+", encoding='utf-8') as f:
                     f.write(cpu_usage()[:-1])
-                path = "Processes"
-                isExist = os.path.exists(path)
-                if not isExist:
-                    os.makedirs(path)
-                    print(f"{path} dir created.")
-                get_process().to_csv(f'./{path}/processes{count_loop}.{format}')
+                get_process().to_csv(f'./{processes_path}/processes{count_loop}.{format}')
         case _:
             sys.exit(f"Wrong file format supplied: {format}\nIt should be json, csv or txt")
 
@@ -528,10 +564,19 @@ def manual_page():
         Look for files in 'Results' and 'Processes' Directories.
     -w or --all_write <file_format>        : Writes all data collection function outputs to specified file format.
     ==================================SIDE FUNCTIONS =============================================================
-    -i or --installed_programs             : Prints installed programs with verisons to terminal. 
+    -i or --programs                       : Prints installed programs with verisons to terminal. 
     -p or --process                        : Returns processess.
     -u or --usb                            : Prints all active USB devices connected or in the system to terminal. 
-    -e or --flash_drives                   : Prints all active USB disk drives connected to the system. 
+    -f or --flash_drives                   : Prints all active USB disk drives connected to the system. 
+    -b or --bios                           : Prints bios info.
+    -n or --network                        : Prints network info.
+    -g or --language                       : System Language.
+    -o or --os                             : Operating System information.
+    -c or --cpu                            : CPU information.
+    -e or --gpu                            : GPU information.
+    -m or --mem                            : Memory information.
+    -d or --disk                           : Disk information.
+    -s or --cpu_usage                      : CPU usage.
     '''
 
 
@@ -541,9 +586,9 @@ currently it writes outputs to txt file. Soon it will output json files
 '''
 if __name__ == '__main__':
     arg_list = sys.argv[1:]
-    opts = "hwl:ipue"
-    long_opts = ["help", "output_file", "all_write", "all_print", "external_usb_disk",
-                 "loop", "usb", "flash_drives", "programs"]
+    opts = "hwl:bipuengocmeds"
+    long_opts = ["help", "all_write", "external_usb_disk",
+                 "loop", "usb", "flash_drives", "programs", "boot", "network"]
     arguments = len(sys.argv) - 1
     print("Arg Count: "+str(arguments))
     if len(sys.argv) == 1:
@@ -561,33 +606,69 @@ if __name__ == '__main__':
                 all_data_collection_write("GMYI_output", file_format)
                 print(f"Files saved in './Results' directory.")
             if current_arg in ("-p", "--process"):
-                with pd.option_context('display.max_rows', None, 'display.max_columns',None):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
                     print(get_process())
             if current_arg in ("-u", "--usb"):
                 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
                     print(all_usb_devices("Status", "Class", "FriendlyName", "InstanceId"))
-            if current_arg in ("-e", "--flash_drives"):
+            if current_arg in ("-f", "--flash_drives"):
                 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
                     print(disk_usb_devices())
             if current_arg in ("-i", "--programs"):
                 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
                     print(installed_programs())
-            if current_arg in ("-l", "--loop"):
+            if current_arg in ("-b", "--bios"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(bios_info())
+            if current_arg in ("-n", "--network"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(network_info())
+            if current_arg in ("-g", "--language"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(get_language())
+            if current_arg in ("-o", "--os"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(os_info())
+            if current_arg in ("-c", "--cpu"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(cpu_info())
+            if current_arg in ("-e", "--gpu"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(gpu_info())
+            if current_arg in ("-m", "--mem"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(mem_info())
+            if current_arg in ("-d", "--disk"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(disk_info())
+            if current_arg in ("-s", "--cpu_usage"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(cpu_usage())
+            if current_arg in ("-l", "--loop"):                
                 count_loop = 0
                 s = sched.scheduler()
+                # Checks if correct file format supplied.
                 file_format = current_val if current_val != "" else val[0]
-                accepted_formats= ['json','csv','txt']
-                # NOTE: Add check for checking if correct file format supplied
-                if val ==[]:
+                accepted_formats = ['json', 'csv', 'txt']
+                if file_format in accepted_formats:
+                    print(f"Correct file format supplied: {file_format}")
+                else:
+                    raise Exception(f"Wrong file format supplied: {file_format}")
+                # Checks if delay seconds supplied.
+                if val == []:
                     raise Exception("Please enter seconds to be delayed after specifing file format!")
                 print("Delay Seconds: " + str(val[0]) + " seconds")
+                # Software loop
                 while True:
                     print("Start Time : ", datetime.now(), "\n")
-                    event1 = s.enter(int(val[0]), 60, all_data_collection_write, argument=("loop", file_format))
+                    # Triggers 'all_data_collection_write' function for specified periods.
+                    # Keep in mind, these periods not accurate %100.
+                    event1 = s.enter(int(val[0]), 1, all_data_collection_write, argument=("loop", file_format))
                     print("Event Created : \n", event1)
                     s.run()
                     print("End Time : ", datetime.now())
                     count_loop = count_loop+1
+    # wrong parameter supplied.
     except getopt.error as err:
         print(str(err))
         print("Please refer to help page (-h)!")
