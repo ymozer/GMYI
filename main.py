@@ -573,9 +573,13 @@ if __name__ == '__main__':
                 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
                     print(installed_programs())
             if current_arg in ("-l", "--loop"):
-                file_format = current_val if current_val != "" else val[0]
                 count_loop = 0
                 s = sched.scheduler()
+                file_format = current_val if current_val != "" else val[0]
+                accepted_formats= ['json','csv','txt']
+                # NOTE: Add check for checking if correct file format supplied
+                if val ==[]:
+                    raise Exception("Please enter seconds to be delayed after specifing file format!")
                 print("Delay Seconds: " + str(val[0]) + " seconds")
                 while True:
                     print("Start Time : ", datetime.now(), "\n")
@@ -584,6 +588,6 @@ if __name__ == '__main__':
                     s.run()
                     print("End Time : ", datetime.now())
                     count_loop = count_loop+1
-
     except getopt.error as err:
         print(str(err))
+        print("Please refer to help page (-h)!")
