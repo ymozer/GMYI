@@ -520,13 +520,16 @@ def manual_page():
 
     GMYI - Give Me Your Info v0.1
 
-    USAGE:
+    ==================================== USAGE ===================================================================
     -h or --help                           : Prints this page to terminal.
     -l or --loop <file_format> <delay_sec> : Writes to files in continous loop.
-    -o or --output-file                    : Writes to file format: main.py -o txt/csv/json
-    -i or --installed_programs             : Prints installed programs with verisons to terminal. 
-    -r or --process                        : Returns processess.
+        -l flag in first loop executes all functions, after loop one completes,
+        It only executes cpu usage and get processes functions.
+        Look for files in 'Results' and 'Processes' Directories.
     -w or --all_write <file_format>        : Writes all data collection function outputs to specified file format.
+    ==================================SIDE FUNCTIONS =============================================================
+    -i or --installed_programs             : Prints installed programs with verisons to terminal. 
+    -p or --process                        : Returns processess.
     -u or --usb                            : Prints all active USB devices connected or in the system to terminal. 
     -e or --flash_drives                   : Prints all active USB disk drives connected to the system. 
     '''
@@ -538,7 +541,7 @@ currently it writes outputs to txt file. Soon it will output json files
 '''
 if __name__ == '__main__':
     arg_list = sys.argv[1:]
-    opts = "howl:irue"
+    opts = "hwl:ipue"
     long_opts = ["help", "output_file", "all_write", "all_print", "external_usb_disk",
                  "loop", "usb", "flash_drives", "programs"]
     arguments = len(sys.argv) - 1
@@ -557,16 +560,18 @@ if __name__ == '__main__':
                 file_format = current_val if current_val != "" else val[0]
                 all_data_collection_write("GMYI_output", file_format)
                 print(f"Files saved in './Results' directory.")
-            if current_arg in ("-o", "--output_file"):  # json or csv
-                print(f"{current_val} output file format is selected.")
-            if current_arg in ("-r", "--process"):
-                get_process()
+            if current_arg in ("-p", "--process"):
+                with pd.option_context('display.max_rows', None, 'display.max_columns',None):
+                    print(get_process())
             if current_arg in ("-u", "--usb"):
-                print(all_usb_devices("Status", "Class", "FriendlyName", "InstanceId"))
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(all_usb_devices("Status", "Class", "FriendlyName", "InstanceId"))
             if current_arg in ("-e", "--flash_drives"):
-                print(disk_usb_devices())
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(disk_usb_devices())
             if current_arg in ("-i", "--programs"):
-                print(installed_programs())
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(installed_programs())
             if current_arg in ("-l", "--loop"):
                 file_format = current_val if current_val != "" else val[0]
                 count_loop = 0
