@@ -72,3 +72,7 @@ File export and software loop is the most important part of our software. Bugs a
 
 ## Flowchart
 ![Flowchart](/Media/GMYI_flowchart.png)
+
+###### Notes
+EXE convert:
+.\Scripts\python.exe -O -m PyInstaller "path\to\main.py" --noconfirm --onefile --console --paths "path\to\GMYI2\Lib\site-packages"

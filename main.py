@@ -29,7 +29,8 @@ THOUGHTS:
 * check with intrrupt which proccess started 
 '''
 
-from tabulate import tabulate
+import pandas as pd
+import numpy as np
 import os
 import GPUtil
 import psutil
@@ -39,12 +40,8 @@ from datetime import datetime
 import subprocess
 import sys
 import getopt
-import wmi
-import re
-import pandas as pd
-import numpy as np
 import sched
-import time
+
 
 # to get rid of print clipping to console and files
 pd.set_option('display.max_columns', None)
@@ -135,12 +132,13 @@ def mem_info():
     return df
 
 
-'''
-This function's structure can change to switch-case. It may be better??
-'''
+
 
 
 def disk_info():
+    '''
+    This function's structure can change to switch-case. It may be better??
+    '''
     partitions = psutil.disk_partitions()
     disk_io = psutil.disk_io_counters()
     df = pd.DataFrame(columns=["Device", "Mountpoint", "File system type",
@@ -294,20 +292,24 @@ def disk_usb_devices():
         stripped[count][len(stripped[count])-1] = stripped[count][len(stripped[count])-1].strip()
         stripped[count][len(stripped[count])-2] = stripped[count][len(stripped[count])-2].strip()
         count = count+1
-    del stripped[0], stripped[0], stripped[len(stripped)-1], stripped[len(stripped)-1], stripped[len(stripped)-1]
-    stripped = list(filter(None, stripped))
-    df = pd.DataFrame(columns=['Property', 'Value'])
-    for value in stripped:
-        if value[0] == '':
-            continue
-        for i in range(len(df.columns)):
-            match i:
-                case 0:
-                    df.at[count, 'Property'] = value[i]
-                case 1:
-                    df.at[count, 'Value'] = value[i]
-        count = count+1
-    return df
+    if not stripped: # if list empty
+        print("There is no flash drives on the system!")
+        return 1
+    else:
+        del stripped[0], stripped[0], stripped[len(stripped)-1], stripped[len(stripped)-1], stripped[len(stripped)-1]
+        stripped = list(filter(None, stripped))
+        df = pd.DataFrame(columns=['Property', 'Value'])
+        for value in stripped:
+            if value[0] == '':
+                continue
+            for i in range(len(df.columns)):
+                match i:
+                    case 0:
+                        df.at[count, 'Property'] = value[i]
+                    case 1:
+                        df.at[count, 'Value'] = value[i]
+            count = count+1
+        return df
 
 
 def installed_programs():
@@ -466,7 +468,10 @@ def all_data_collection_write(filename, format):
                 mem_info().to_json(f'./{results_path}/mem_info{count_loop}.{format}', orient="table")
                 disk_info().to_json(f'./{results_path}/disk_info{count_loop}.{format}', orient="table")
                 gpu_info().to_json(f'./{results_path}/gpu_info{count_loop}.{format}', orient="table")
-                disk_usb_devices().to_json(f'./{results_path}/flash_drives{count_loop}.{format}', orient="table")  # bad format
+                if disk_usb_devices() == 1:
+                    pass
+                else:
+                    disk_usb_devices().to_json(f'./{results_path}/flash_drives{count_loop}.{format}', orient="table")  # bad format
                 installed_programs().to_json(f'./{results_path}/installed_programs{count_loop}.{format}', orient="table")
                 # all_usb_devices().to_json(f'./{results_path}/all_usb_devices{count_loop}.{format}', orient="table")
                 bios_info().to_json(f'./{results_path}/bios_info{count_loop}.{format}', orient="table")

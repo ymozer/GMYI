@@ -5,8 +5,8 @@ block_cipher = None
 
 
 a = Analysis(
-    ['main.py'],
-    pathex=[],
+    ['C:\\Users\\ymeti\\Desktop\\GMYI2\\main.py'],
+    pathex=['C:\\Users\\ymeti\\Desktop\\GMYI2\\Lib\\site-packages'],
     binaries=[],
     datas=[],
     hiddenimports=[],
